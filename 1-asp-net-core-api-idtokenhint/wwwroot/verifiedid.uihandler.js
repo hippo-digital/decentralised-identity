@@ -88,9 +88,9 @@ function setUserPhoto() {
 }
 
 function hideShowPhotoElements(val) {
-    document.getElementById("take-selfie").style.display = val;
-    document.getElementById("imageUpload").style.display = val;
-    document.getElementById("photo-help").style.display = val;
+    // document.getElementById("take-selfie").style.display = val;
+    // document.getElementById("imageUpload").style.display = val;
+    // document.getElementById("photo-help").style.display = val;
 }
 
 function uploadImage(e) {

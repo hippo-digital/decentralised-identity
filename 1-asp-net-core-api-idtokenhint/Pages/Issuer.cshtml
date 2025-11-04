@@ -10,14 +10,14 @@
         <h2 id="idSubTitle"></h2>
 
         <p id="photo-help" style="text-align:left; display:none">
-            This verifiable credential includes a photo claim that you can be used for biometric face check during presentation. You can either take a selfie or upload an existing picture of you before you issue the credential.
+            @* This verifiable credential includes a photo claim that you can be used for biometric face check during presentation. You can either take a selfie or upload an existing picture of you before you issue the credential.
             <br /><br />
             For selfie, click the Take Selfie button, then scan the QR code with the <strong>QR Code Reader app</strong> on your mobile, click 'Open Camera' in the page, take selfie and then click 'Use photo' in the mobile.
             The photo is not persisted anywhere and is just added to the credential you will have in your wallet.
             <br /><br />
             Then click Issue Credential to start the issuance process. When the QR code appears, scan it with your <strong>Microsoft Authenticator</strong> or your <strong>custom wallet</strong> app.
             <br /><br />
-            The photo should be a portrait photo of atleast 200x200 pixels. Glasses, masks, hats, headphones, head coverings and face coverings will result in failure in liveness checks during presentations.
+            The photo should be a portrait photo of atleast 200x200 pixels. Glasses, masks, hats, headphones, head coverings and face coverings will result in failure in liveness checks during presentations. *@
         </p>
 
         <div id="message-wrapper" class="margin-bottom-75" style="display: none">
@@ -36,8 +36,8 @@
         </div>
 
         <button type="button" id="issue-credential" class="button bg-nw-purple text-nw-white">Issue Credential</button>
-        <button type="button" id="check-result" class="button bg-nw-purple text-nw-white" style="display:none">Check Result</button>
-        <button type="button" id="take-selfie" class="button bg-nw-purple text-nw-white" style="display:none">Take Selfie</button>
+        @* <button type="button" id="check-result" class="button bg-nw-purple text-nw-white" style="display:none">Check Result</button>
+        <button type="button" id="take-selfie" class="button bg-nw-purple text-nw-white" style="display:none">Take Selfie</button> *@
 
         <input type='file' id="imageUpload" accept="image/*" class="button bg-nw-blue text-nw-white" style="display:none" />
         <br /><br />
