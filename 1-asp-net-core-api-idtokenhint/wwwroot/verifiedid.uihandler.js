@@ -54,9 +54,19 @@ function presentationVerified(id, response) {
     displayMessage("Presentation verified: <br/><br/>" + JSON.stringify(response.claims));
     window.location = 'PresentationVerified?id=' + id;
 }
+function hideDobBlock() {
+  var block = document.getElementById('dob-block');
+  if (!block) return;
+  // hide the whole DOB UI
+  block.style.display = 'none';
+  // optional: clear & disable input so it can't be changed afterward
+  var dobInput = document.getElementById('dob');
+  if (dobInput) { dobInput.value = ''; dobInput.disabled = true; }
+}
 function issuanceComplete(id, response) {
     hideQRCode();
     displayMessage("Issuance completed");
+    hideDobBlock();
 }
 function selfieTaken(id, response) {
     hideQRCode();
@@ -68,6 +78,7 @@ function requestError(requestType, response) {
     hideQRCode();
     console.log(JSON.stringify(response));
     displayMessage(`${requestType} error: ` + JSON.stringify(response));
+    hideDobBlock();
 }
 // method to post selfie taken before starting an issuance request
 function setUserPhoto() {

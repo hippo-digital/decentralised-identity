@@ -25,6 +25,16 @@
             <div id="message"></div>
         </div>
 
+        <!-- ADDED: DOB input (keeps existing look; no elements removed/unchanged) -->
+        <div id="dob-block" style="margin:16px 0;">
+            <label for="dob" style="display:inline-block; margin-bottom:6px;">Date of birth (required for
+                issuance)</label><br>
+            <input type="date" id="dob" aria-label="Date of birth" />
+            <small style="display:block; opacity:0.8; margin-top:4px;">
+                We only use this to compute “Age over 18” for the credential.
+            </small>
+        </div>
+
         <button type="button" id="issue-credential" class="button bg-nw-purple text-nw-white">Issue Credential</button>
         <button type="button" id="check-result" class="button bg-nw-purple text-nw-white" style="display:none">Check Result</button>
         <button type="button" id="take-selfie" class="button bg-nw-purple text-nw-white" style="display:none">Take Selfie</button>
@@ -42,6 +52,50 @@
         <script src="verifiedid.uihandler.js"></script>
 
         <script>
+  // ADDED: helper to validate yyyy-mm-dd (from <input type="date">)
+  function getDobOrShowError() {
+    const el = document.getElementById('dob');
+    if (!el) return null;
+    const val = (el.value || '').trim();
+    if (!val) {
+      alert('Please select your date of birth before issuing.');
+      return null;
+    }
+    // <input type="date"> already enforces yyyy-mm-dd in modern browsers,
+    // but we’ll be defensive:
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      alert('Date of birth must be in YYYY-MM-DD format.');
+      return null;
+    }
+    return val;
+  }
+
+  // ADDED: transparently append ?dob=... when the page (or your JS files) call the issuance API
+  (function attachDobToIssuanceFetch() {
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+      try {
+        let url = (typeof input === 'string') ? input : input?.url;
+        // only intercept the issuance endpoint; leave everything else untouched
+        if (url && url.indexOf('/api/issuer/issuance-request') !== -1) {
+          const dob = getDobOrShowError();
+          if (!dob) {
+            // block the call if DOB missing/invalid
+            return Promise.reject(new Error('DOB is required for issuance'));
+          }
+          const u = new URL(url, window.location.origin);
+          if (!u.searchParams.get('dob')) {
+            u.searchParams.set('dob', dob);
+          }
+          input = (typeof input === 'string') ? u.toString() : new Request(u.toString(), input);
+        }
+      } catch (e) {
+        // fall through to original fetch if anything unexpected happens
+        console.warn('DOB append shim warning:', e);
+      }
+      return origFetch.call(this, input, init);
+    };
+  })();
             var qrcode = new QRCode("qrcode", { width: 150, height: 150 });
             var havePhotoClaim = false;
 

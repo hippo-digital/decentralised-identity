@@ -65,7 +65,7 @@ namespace AspNetCoreVerifiableCredentials
     // Birthdate: token might not have it; provide it explicitly
     string dobFromToken  = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "birthdate")?.Value;
     string dobFromConfig = _configuration.GetValue<string>("VerifiedID:DefaultDateOfBirth"); // e.g. "1997-04-15"
-    string dob = dobFromToken ?? dobFromConfig ?? "1997-04-15"; // must be YYYY-MM-DD
+    string dob = dobFromToken ?? dobFromConfig ?? Convert.ToString(HttpContext.Request.Query["dob"]) ?? "1997-04-15"; // must be YYYY-MM-DD
     request.claims["birthdate"] = dob;
 
     // Optional additional claims (only used if your rules map them)
