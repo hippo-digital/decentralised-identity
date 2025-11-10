@@ -25,6 +25,7 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http;
 using System.Linq;    
 using System.Security.Claims;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace AspNetCoreVerifiableCredentials
 {
@@ -52,11 +53,12 @@ namespace AspNetCoreVerifiableCredentials
 
     // Pull from signed-in user if available, else fallback demo values
     string given = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value
-                   ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value
-                   ?? "Megan";
+                   ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ??
+                   Convert.ToString(HttpContext.Request.Query["firstName"]) ?? "Jim";
     string family = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value
-                    ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value
-                    ?? "Bowen";
+                    ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ??
+Convert.ToString(HttpContext.Request.Query["familyName"])
+                    ?? "Small";
 
     // IMPORTANT: send the exact names your rules expect as inputClaim
     request.claims["given_name"]  = given;

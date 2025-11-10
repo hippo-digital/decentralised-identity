@@ -55,7 +55,7 @@ function presentationVerified(id, response) {
     window.location = 'PresentationVerified?id=' + id;
 }
 function hideDobBlock() {
-  var block = document.getElementById('dob-block');
+  var block = document.getElementById('input-block');
   if (!block) return;
   // hide the whole DOB UI
   block.style.display = 'none';

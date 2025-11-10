@@ -5,7 +5,7 @@
 }
 <div id="wrap">
     <div style="text-align: center;">
-        <img src="VerifiedCredentialExpert-icon.png" height=200px; />
+        <img id="logo" src="" height=200px; />
         <h1 id="vcType">VerifiedEmployee Presentation</h1>
 
 
@@ -16,8 +16,8 @@
 
             <table id="claims">
                 <thead>
-                <th style="width:25%">Claims</th>
-                <th>Value</th>
+                    <th style="width:25%">Claims</th>
+                    <th>Value</th>
                 </thead>
                 <tbody>
                 </tbody>
@@ -27,8 +27,8 @@
 
             <table id="vcinfo">
                 <thead>
-                <th style="width:25%">VC Details</th>
-                <th>Value</th>
+                    <th style="width:25%">VC Details</th>
+                    <th>Value</th>
                 </thead>
                 <tbody>
                 </tbody>
@@ -41,6 +41,15 @@
         <script src="verifiedid.uihandler.js"></script>
 
         <script>
+            fetch('api/issuer/get-manifest')
+                .then(function (response) {
+                    response.text()
+                        .catch(error => displayMessage(error))
+                        .then(function (message) {
+                            var manifest = JSON.parse(message);
+                            document.getElementById('logo').src = manifest.display.card.logo.uri;
+                        }).catch(error => { console.log(error.message); })
+                }).catch(error => { console.log(error.message); })
 
             function addTableRowLabel(tbodyRef, key) {
                 var row = tbodyRef.insertRow(0);

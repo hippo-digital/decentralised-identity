@@ -24,6 +24,14 @@
       <i class="fas fa-user-check green icon-text-large margin-bottom-25"></i>
       <div id="message"></div>
     </div>
+<div id="input-block">
+    <div id="name-block" style="margin:16px 0;">
+      <label for="firstName" style="display:inline-block; margin-bottom:4px;">First name</label><br />
+      <input type="text" id="firstName" aria-label="First name" />
+      <br />
+      <label for="familyName" style="display:inline-block; margin:8px 0 4px;">Family name</label><br />
+      <input type="text" id="familyName" aria-label="Family name" />
+    </div>
 
     <!-- ADDED: DOB input (keeps existing look; no elements removed/unchanged) -->
     <div id="dob-block" style="margin:16px 0;">
@@ -35,9 +43,12 @@
       </small>
     </div>
 
+</div>
     <button type="button" id="issue-credential" class="button bg-nw-purple text-nw-white">Issue Credential</button>
-    @* <button type="button" id="check-result" class="button bg-nw-purple text-nw-white" style="display:none">Check Result</button>
-        <button type="button" id="take-selfie" class="button bg-nw-purple text-nw-white" style="display:none">Take Selfie</button> *@
+    <button type="button" id="check-result" class="button bg-nw-purple text-nw-white" style="display:none">Check
+      Result</button>
+    <button type="button" id="take-selfie" class="button bg-nw-purple text-nw-white" style="display:none">Take
+      Selfie</button>
 
     <input type='file' id="imageUpload" accept="image/*" class="button bg-nw-blue text-nw-white" style="display:none" />
     <br /><br />
@@ -51,7 +62,7 @@
     <script src="verifiedid.requestservice.client.js"></script>
     <script src="verifiedid.uihandler.js"></script>
 
-    <script>
+    @* <script>
 
       // ADDED: strict 18+ check
       function isUserOver18(dobStr) {
@@ -165,6 +176,127 @@
       document.getElementById('imageUpload').addEventListener('change', function (e) {
         uploadImage(e)
       });
-    </script>
+    </script> *@
+
+    <script>
+  // ADDED: helper to validate yyyy-mm-dd (from <input type="date">)
+  function getDobOrShowError() {
+    const el = document.getElementById('dob');
+    if (!el) return null;
+    const val = (el.value || '').trim();
+    if (!val) {
+      alert('Please select your date of birth before issuing.');
+      return null;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      alert('Date of birth must be in YYYY-MM-DD format.');
+      return null;
+    }
+    return val;
+  }
+
+  // ADDED: simple helper to get a non-empty text field
+  function getTextOrShowError(id, label) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    const val = (el.value || '').trim();
+    if (!val) {
+      alert(`Please enter your ${label} before issuing.`);
+      return '';
+    }
+    return val;
+  }
+
+  // ADDED: transparently append ?dob=&firstName=&familyName= when calling issuance API
+  (function attachDobToIssuanceFetch() {
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+      try {
+        let url = (typeof input === 'string') ? input : input?.url;
+        // only intercept the issuance endpoint; leave everything else untouched
+        if (url && url.indexOf('/api/issuer/issuance-request') !== -1) {
+          const dob = getDobOrShowError();
+          if (!dob) {
+            return Promise.reject(new Error('DOB is required for issuance'));
+          }
+          const firstName  = getTextOrShowError('firstName', 'first name');
+          if (!firstName) {
+            return Promise.reject(new Error('First name is required for issuance'));
+          }
+          const familyName = getTextOrShowError('familyName', 'family name');
+          if (!familyName) {
+            return Promise.reject(new Error('Family name is required for issuance'));
+          }
+
+          const u = new URL(url, window.location.origin);
+          if (!u.searchParams.get('dob'))         u.searchParams.set('dob', dob);
+          if (!u.searchParams.get('firstName'))  u.searchParams.set('firstName', firstName);
+          if (!u.searchParams.get('familyName')) u.searchParams.set('familyName', familyName);
+
+          input = (typeof input === 'string') ? u.toString() : new Request(u.toString(), input);
+        }
+      } catch (e) {
+        console.warn('DOB/name append shim warning:', e);
+      }
+      return origFetch.call(this, input, init);
+    };
+  })();
+
+  var qrcode = new QRCode("qrcode", { width: 150, height: 150 });
+  var havePhotoClaim = false;
+
+  fetch('api/issuer/get-manifest')
+      .then(function (response) {
+          response.text()
+              .catch(error => displayMessage(error))
+              .then(function (message) {
+                  var manifest = JSON.parse(message);
+                  document.getElementById('idTitle').innerHTML = "Issuance of " + manifest.display.card.title + " by " + manifest.display.card.issuedBy;
+                  document.getElementById('idSubTitle').innerHTML = manifest.display.card.description;
+                  document.getElementById('logo').src = manifest.display.card.logo.uri;
+                  // if the manifest has a claim with type image/jp[e]g, then we should support adding a photo
+                  if (message.includes("image/jp")) {
+                      havePhotoClaim = true;
+                      hideShowPhotoElements("");
+                  }
+              }).catch(error => { console.log(error.message); })
+      }).catch(error => { console.log(error.message); })
+
+  // backend will set ageOver18 true/false
+  document.getElementById('issue-credential').addEventListener('click', () => {
+      // this will show alerts if required fields missing
+      const dob = getDobOrShowError();
+      const firstName  = getTextOrShowError('firstName', 'first name');
+      const familyName = getTextOrShowError('familyName', 'family name');
+      if (!dob || !firstName || !familyName) {
+          return; // don’t call backend if inputs invalid/empty
+      }
+
+      if ( havePhotoClaim ) {
+          setUserPhoto();
+          hideShowPhotoElements("none");
+          // make sure the photo is sent to API in backend before we continue
+          setTimeout(requestService.createIssuanceRequest(), 250);
+      } else {
+          requestService.createIssuanceRequest();
+      }
+  });
+
+  document.getElementById('take-selfie').addEventListener('click', () => {
+      document.getElementById("selfie").src = "";
+      document.getElementById("selfie").style.display = "none";
+      document.getElementById("imageUpload").style.display = "none";
+      requestService.createSelfieRequest();
+  });
+
+  document.getElementById('check-result').addEventListener('click', () => {
+      requestService.pollRequestStatus(requestService.request.id);
+  });
+
+  document.getElementById('imageUpload').addEventListener('change', function (e) {
+      uploadImage(e)
+  });
+</script>
+
   </div>
 </div>

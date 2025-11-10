@@ -5,7 +5,7 @@
 }
 <div id="wrap">
     <div style="text-align: center;">
-        <img src="VerifiedCredentialExpert-icon.png" height=200px; />
+        <img id="logo" src="" height=200px; />
         <h1 id="idTitle">Verifiable Credential Presentation</h1>
         <h2 id="idSubTitle">Presentation request for type @ViewData["CredentialType"]</h2>
         <h3 id="idSub3Title">Accepted issuers: @string.Join( ", ", (string[])ViewData["acceptedIssuers"] )</h3>
@@ -69,6 +69,15 @@
         <script src="verifiedid.uihandler.js"></script>
 
         <script>
+        fetch('api/issuer/get-manifest')
+        .then(function (response) {
+          response.text()
+            .catch(error => displayMessage(error))
+            .then(function (message) {
+              var manifest = JSON.parse(message);
+              document.getElementById('logo').src = manifest.display.card.logo.uri;
+            }).catch(error => { console.log(error.message); })
+        }).catch(error => { console.log(error.message); })
             var qrcode = new QRCode("qrcode", { width: 150, height: 150 });
             var photoClaimName = '@ViewData["PhotoClaimName"]';
 
