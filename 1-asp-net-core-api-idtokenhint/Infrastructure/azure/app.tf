@@ -20,12 +20,17 @@ resource "azurerm_app_service" "did-app-service" {
     dotnet_framework_version = "v8.0"
     scm_type                 = "None"
   }
+}
 
-  # app_settings = {
-  #   "TENANT_ID" = "some-value"
-  #   "CRED_MANIFEST" = "some-value"
-  #   "CLIENT_SECRET" = "some-value"
-  #   "CLIENT_ID" = "some-value"
-  #   "DID_AUTH" = "some-value"
-  # }
+resource "null_resource" "did-app-deploy" {
+  provisioner "local-exec" {
+    command = <<EOT
+      cd  ../../
+      python3 configure_settings.py --tenant-id=${var.tenant_id} --client-id=${var.client_id} --client-secret=${var.client_secret} --did-auth="${var.did_auth}" --cred-manifest="${var.cred_manifest}"
+      dotnet publish ../Application/1-asp-net-core-api-idtokenhint -c Release -o ../Application/1-asp-net-core-api-idtokenhint/bin/Release/net8.0/publish
+      az webapp deploy --resource-group ${azurerm_resource_group.did-app-rg.name} --name ${azurerm_app_service.did-app-service.name} --src-path ../Application/1-asp-net-core-api-idtokenhint/bin/Release/net8.0/publish
+    EOT
+  }
+
+  depends_on = [azurerm_app_service.did-app-service]
 }
