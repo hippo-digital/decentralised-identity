@@ -78,10 +78,68 @@ function hideDobBlock() {
   var dobInput = document.getElementById('dob');
   if (dobInput) { dobInput.value = ''; dobInput.disabled = true; }
 }
+
 function issuanceComplete(id, response) {
     hideQRCode();
-    displayMessage("Issuance completed");
-    hideDobBlock();
+    var authBlock = document.getElementById('auth-block');
+    if (authBlock) {
+        authBlock.style.display = 'none';
+    }
+    var inputBlock = document.getElementById('input-block');
+    if (inputBlock) {
+        inputBlock.style.display = 'none';
+    }
+    var msgWrapper = document.getElementById('message-wrapper');
+    if (msgWrapper) {
+        msgWrapper.style.display = 'none';
+    }
+    var mainTitle = document.querySelector('.main-action-title');
+    if (mainTitle) {
+        mainTitle.style.display = 'none';
+    }
+    var subTitle = document.querySelector('.small-instruction');
+    if (subTitle) {
+        subTitle.style.display = 'none';
+    }
+    var backLink = document.querySelector('.back-link');
+    if (backLink) {
+        backLink.style.display = 'none';
+    }
+
+    var firstNameEl = document.getElementById('firstName');
+    var familyNameEl = document.getElementById('familyName');
+    var firstName = firstNameEl ? firstNameEl.value : "";
+    var familyName = familyNameEl ? familyNameEl.value : "";
+    
+    var nameSpan = document.getElementById('success-user-name');
+    if (nameSpan) {
+        nameSpan.innerText = `${firstName} ${familyName}`;
+    }
+
+    var today = new Date();
+    var day = today.getDate();
+    var suffix = 'th';
+    if (day % 10 == 1 && day != 11) suffix = 'st';
+    if (day % 10 == 2 && day != 12) suffix = 'nd';
+    if (day % 10 == 3 && day != 13) suffix = 'rd';
+    
+    var dateString = `${day}${suffix} of ${today.toLocaleDateString('en-US', { month: 'long' })}`;
+    var dateSpan = document.getElementById('success-date');
+    if(dateSpan) {
+        dateSpan.innerText = dateString;
+    }
+
+    var successBlock = document.getElementById('issuance-success-block');
+    if (successBlock) {
+        successBlock.style.display = 'block';
+    }
+
+    var backButton = document.getElementById('back-to-start');
+    if (backButton) {
+        backButton.addEventListener('click', () => {
+            window.location.href = './';
+        });
+    }
 }
 function selfieTaken(id, response) {
     hideQRCode();

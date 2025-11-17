@@ -51,6 +51,25 @@
         <div id="pinCode" style="display: none; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin-top: 10px;">
             </div>
     </div>
+
+        <div id="issuance-success-block" style="display: none;">
+        <div class="success-icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+
+        <h2 class="main-action-title" style="text-align: center;">ID successfully issued</h2>
+        
+        <p class="small-instruction text-center" style="margin-bottom: 30px;">
+            A new credential was created and issued by Hippo wallet for
+            <strong id="success-user-name"></strong> on the 
+            <strong id="success-date"></strong>.
+        </p>
+
+        <button type="button" id="back-to-start" class="button" style="width: 100%;">Back to start page</button>
+
+    </div>
     
     <button type="button" id="issue-credential" class="button" style="width: 100%; margin-top: 10px;">Issue an ID</button>
     
@@ -63,7 +82,6 @@
     <script src="verifiedid.requestservice.client.js"></script>
     <script src="verifiedid.uihandler.js"></script>
 <script>
-  // ADDED: helper to validate yyyy-mm-dd (from <input type="date">)
   function getDobOrShowError() {
     const el = document.getElementById('dob');
     if (!el) return null;
@@ -79,7 +97,6 @@
     return val;
   }
 
-  // ADDED: simple helper to get a non-empty text field
   function getTextOrShowError(id, label) {
     const el = document.getElementById(id);
     if (!el) return '';
@@ -91,7 +108,6 @@
     return val;
   }
 
-  // ADDED: transparently append ?dob=&firstName=&familyName= when calling issuance API
   (function attachDobToIssuanceFetch() {
     const origFetch = window.fetch;
     window.fetch = function(input, init) {
@@ -146,20 +162,17 @@
               }).catch(error => { console.log(error.message); })
       }).catch(error => { console.log(error.message); })
 
-  // backend will set ageOver18 true/false
   document.getElementById('issue-credential').addEventListener('click', () => {
-      // this will show alerts if required fields missing
       const dob = getDobOrShowError();
       const firstName  = getTextOrShowError('firstName', 'first name');
       const familyName = getTextOrShowError('familyName', 'family name');
       if (!dob || !firstName || !familyName) {
-          return; // don’t call backend if inputs invalid/empty
+          return;
       }
 
       if ( havePhotoClaim ) {
           setUserPhoto();
           hideShowPhotoElements("none");
-          // make sure the photo is sent to API in backend before we continue
           setTimeout(requestService.createIssuanceRequest(), 250);
       } else {
           requestService.createIssuanceRequest();
