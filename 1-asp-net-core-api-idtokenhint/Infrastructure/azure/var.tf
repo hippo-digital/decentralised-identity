@@ -1,21 +1,5 @@
-variable "tenant_id" {
-  description = "The Tenant ID for the Azure AD"
+variable "did_app_kv_rg" {
+  description = "The Resource Group name for the DID App Key Vault resource group"
   type        = string
-}
-variable "client_id" {
-  description = "The Client ID for the Service Principal"
-  type        = string
-}
-variable "client_secret" {
-  description = "The Client Secret for the Service Principal"
-  type        = string
-  sensitive   = true
-}
-variable "did_auth" {
-  description = "The DID Authority URL"
-  type        = string
-}
-variable "cred_manifest" {
-    description = "The Credential Manifest URL"
-    type        = string
+  default     = "did-app-kv-rg"
 }
