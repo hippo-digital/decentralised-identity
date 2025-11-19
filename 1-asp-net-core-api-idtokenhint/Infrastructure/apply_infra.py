@@ -23,6 +23,24 @@ def parse_cli_args(args):
             tf_vars[key] = value
     return command, tf_vars
 
+def run_and_stream_command(cmd):
+    """Run a command and stream its output"""
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+    for line in process.stdout:
+        print(line, end='')
+
+    process.wait()
+    process.stdout.close()
+    
+    return process
+    
 
 def run_terraform_command(command, tf_vars=None):
     """Run Terraform command with optional variables"""
@@ -43,30 +61,21 @@ def run_terraform_command(command, tf_vars=None):
         if command == "deploy":
             # Special handling for 'deploy' command
             init_cmd = ["terraform", f"-chdir={TERRAFORM_DIR}", "init"]
-            subprocess.run(init_cmd, text=True, check=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            result = run_and_stream_command(init_cmd)
             apply_cmd = ["terraform", f"-chdir={TERRAFORM_DIR}", "apply", "-auto-approve"]
             if tf_vars:
                 for key, value in tf_vars.items():
                     apply_cmd.append(f'-var={key}="{value}"')
-            subprocess.run(apply_cmd, text=True, check=True, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            result = run_and_stream_command(apply_cmd)
         else:
-            result = subprocess.run(
-            cmd,
-            text=True,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-            )
+            result = run_and_stream_command(cmd)
     except subprocess.CalledProcessError as e:
         print("Terraform command failed!")
         print("STDOUT:\n", e.stdout)
         print("STDERR:\n", e.stderr)
         sys.exit(1)
-
-    print("STDOUT:\n", result.stdout)
-    print("STDERR:\n", result.stderr)
+        print("STDOUT:\n", result.stdout)
+        print("STDERR:\n", result.stderr)
 
 if __name__ == "__main__":
     check_terraform()

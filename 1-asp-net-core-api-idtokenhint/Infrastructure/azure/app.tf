@@ -1,36 +1,61 @@
-resource "azurerm_app_service_plan" "did-app-plan" {
+resource "azurerm_service_plan" "did-app-plan" {
   name                = "did-app-service-plan"
   location            = azurerm_resource_group.did-app-rg.location
   resource_group_name = azurerm_resource_group.did-app-rg.name
-  kind                = "Linux"
+  os_type             = "Linux"
+  sku_name            = "F1"
+}
 
-  sku {
-    tier = "Free"
-    size = "F1"
+resource "azurerm_linux_web_app" "did-app-service" {
+  name                = "did-app-service"
+  resource_group_name = azurerm_resource_group.did-app-rg.name
+  location            = azurerm_service_plan.did-app-plan.location
+  service_plan_id     = azurerm_service_plan.did-app-plan.id
+  site_config {
+    always_on = false
+    application_stack {
+      dotnet_version = "8.0"
+    }
   }
 }
 
-resource "azurerm_app_service" "did-app-service" {
-  name                = "did-app-service"
-  location            = azurerm_resource_group.did-app-rg.location
-  resource_group_name = azurerm_resource_group.did-app-rg.name
-  app_service_plan_id = azurerm_app_service_plan.did-app-plan.id
+data "azurerm_key_vault" "did_key_vault" {
+  name                = "did-app-kv"
+  resource_group_name = data.azurerm_resource_group.did_app_kv_rg.name
+}
 
-  site_config {
-    dotnet_framework_version = "v8.0"
-    scm_type                 = "None"
-  }
+data "azurerm_key_vault_secret" "tenant_id" {
+  name         = "TenantID"
+  key_vault_id = data.azurerm_key_vault.did_key_vault.id
+}
+
+data "azurerm_key_vault_secret" "client_id" {
+  name         = "ClientID"
+  key_vault_id = data.azurerm_key_vault.did_key_vault.id
+}
+
+data "azurerm_key_vault_secret" "client_secret" {
+  name         = "ClientSecret"
+  key_vault_id = data.azurerm_key_vault.did_key_vault.id
+}
+
+data "azurerm_key_vault_secret" "did_auth" {
+  name         = "DidAuth"
+  key_vault_id = data.azurerm_key_vault.did_key_vault.id
+}
+
+data "azurerm_key_vault_secret" "cred_manifest" {
+  name         = "CredManifest"
+  key_vault_id = data.azurerm_key_vault.did_key_vault.id
 }
 
 resource "null_resource" "did-app-deploy" {
   provisioner "local-exec" {
-    command = <<EOT
-      cd  ../../
-      python3 configure_settings.py --tenant-id=${var.tenant_id} --client-id=${var.client_id} --client-secret=${var.client_secret} --did-auth="${var.did_auth}" --cred-manifest="${var.cred_manifest}"
-      dotnet publish ../Application/1-asp-net-core-api-idtokenhint -c Release -o ../Application/1-asp-net-core-api-idtokenhint/bin/Release/net8.0/publish
-      az webapp deploy --resource-group ${azurerm_resource_group.did-app-rg.name} --name ${azurerm_app_service.did-app-service.name} --src-path ../Application/1-asp-net-core-api-idtokenhint/bin/Release/net8.0/publish
-    EOT
+    command = "cd ../.. && python3 configure_settings.py --tenantID=${data.azurerm_key_vault_secret.tenant_id.value} --clientID=${data.azurerm_key_vault_secret.client_id.value} --clientSecret=${data.azurerm_key_vault_secret.client_secret.value} --didAuth=${data.azurerm_key_vault_secret.did_auth.value} --credManifest=${data.azurerm_key_vault_secret.cred_manifest.value} && dotnet publish ./AspNetCoreVerifiableCredentials.csproj --configuration Release --output ./deploy && cd deploy && zip -r ../myapp.zip * && cd .. && az webapp deploy --resource-group ${azurerm_linux_web_app.did-app-service.resource_group_name} --name ${azurerm_linux_web_app.did-app-service.name} --src-path ./myapp.zip --type zip"
   }
+  depends_on = [azurerm_linux_web_app.did-app-service]
+}
 
-  depends_on = [azurerm_app_service.did-app-service]
+output "did_app_service_url" {
+  value = "https://${azurerm_linux_web_app.did-app-service.default_hostname}/"
 }

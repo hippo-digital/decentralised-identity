@@ -25,8 +25,12 @@ resource "azurerm_resource_group" "did-app-rg" {
   location = "UK South"
 }
 
+data "azurerm_resource_group" "did_app_kv_rg" {
+  name = var.did_app_kv_rg
+}
+
 data "azurerm_role_definition" "contributor" {
-  name = "Contributor"
+  name  = "Contributor"
   scope = data.azurerm_subscription.primary.id
 }
 
