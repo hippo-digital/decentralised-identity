@@ -19,8 +19,8 @@ resource "azurerm_linux_web_app" "did-app-service" {
   }
 
   app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.appi.instrumentation_key
-    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.appi.connection_string
+    "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.did-app-insights.instrumentation_key
+    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.did-app-insights.connection_string
     "APPLICATIONINSIGHTS_ENABLE_LOGGING"    = "true"
   }
 }
