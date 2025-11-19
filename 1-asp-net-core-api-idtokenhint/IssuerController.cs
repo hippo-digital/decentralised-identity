@@ -23,7 +23,7 @@ using Microsoft.Extensions.Configuration;
 using System.Reflection.Metadata.Ecma335;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http;
-using System.Linq;    
+using System.Linq;
 using System.Security.Claims;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -47,61 +47,65 @@ namespace AspNetCoreVerifiableCredentials
             _apiKey = System.Environment.GetEnvironmentVariable("API-KEY");
         }
 
-    private IssuanceRequest SetClaims(IssuanceRequest request)
-{
-    request.claims = new Dictionary<string, string>();
+        private IssuanceRequest SetClaims(IssuanceRequest request)
+        {
+            request.claims = new Dictionary<string, string>();
 
-    // Pull from signed-in user if available, else fallback demo values
-    string given = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value
-                   ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ??
-                   Convert.ToString(HttpContext.Request.Query["firstName"]) ?? "Jim";
-    string family = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value
-                    ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ??
-Convert.ToString(HttpContext.Request.Query["familyName"])
-                    ?? "Small";
+            // Pull from signed-in user if available, else fallback demo values
+            string given = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value
+                           ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value ??
+                           Convert.ToString(HttpContext.Request.Query["firstName"]) ?? "Jim";
+            string family = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value
+                            ?? HttpContext.User.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ??
+        Convert.ToString(HttpContext.Request.Query["familyName"])
+                            ?? "Small";
 
-    // IMPORTANT: send the exact names your rules expect as inputClaim
-    request.claims["given_name"]  = given;
-    request.claims["family_name"] = family;
+            // IMPORTANT: send the exact names your rules expect as inputClaim
+            request.claims["given_name"] = given;
+            request.claims["family_name"] = family;
 
-    // Birthdate: token might not have it; provide it explicitly
-    string dobFromToken  = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "birthdate")?.Value;
-    string dobFromConfig = _configuration.GetValue<string>("VerifiedID:DefaultDateOfBirth"); // e.g. "1997-04-15"
-    string dob = dobFromToken ?? dobFromConfig ?? Convert.ToString(HttpContext.Request.Query["dob"]) ?? "1997-04-15"; // must be YYYY-MM-DD
-    request.claims["birthdate"] = dob;
+            // Birthdate: token might not have it; provide it explicitly
+            string dobFromToken = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "birthdate")?.Value;
+            string dobFromConfig = _configuration.GetValue<string>("VerifiedID:DefaultDateOfBirth"); // e.g. "1997-04-15"
+            string dob = dobFromToken ?? dobFromConfig ?? Convert.ToString(HttpContext.Request.Query["dob"]) ?? "1997-04-15"; // must be YYYY-MM-DD
+            request.claims["dateOfBirth"] = dob;
 
-    // Optional additional claims (only used if your rules map them)
-    // licenseNumber (unique/indexed), address, ageOver18, photo, etc.
-    string lic = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "extension_licenseNumber")?.Value
-                 ?? _configuration.GetValue<string>("VerifiedID:DefaultLicenseNumber") ?? "UK-ABC-12345";
-    request.claims["licenseNumber"] = lic;
+            // Optional additional claims (only used if your rules map them)
+            // licenseNumber (unique/indexed), address, ageOver18, photo, etc.
+            string lic = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "extension_licenseNumber")?.Value
+                         ?? _configuration.GetValue<string>("VerifiedID:DefaultLicenseNumber") ?? "UK-ABC-12345";
+            request.claims["licenseNumber"] = lic;
 
-    string addr = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "streetAddress")?.Value
-                  ?? _configuration.GetValue<string>("VerifiedID:DefaultAddress") ?? "221B Baker Street, London";
-    request.claims["address"] = addr;
+            string addr = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "streetAddress")?.Value
+                          ?? _configuration.GetValue<string>("VerifiedID:DefaultAddress") ?? "221B Baker Street, London";
+            request.claims["address"] = addr;
 
-    if (DateTime.TryParse(dob, out var dobDt))
-    {
-        bool over18 = (DateTime.UtcNow - dobDt).TotalDays / 365.25 >= 18.0;
-        request.claims["ageOver18"] = over18.ToString().ToLowerInvariant(); // "true"/"false"
-    }
+            if (DateTime.TryParse(dob, out var dobDt))
+            {
+                var today = DateTime.UtcNow.Date;
+                var eighteenthBirthday = dobDt.Date.AddYears(18);
+                bool over18 = today >= eighteenthBirthday;
+                request.claims["ageOver18"] = over18.ToString().ToLowerInvariant();
+            }
 
-    string photoId = this.Request.Headers["rsid"];
-    if (!string.IsNullOrWhiteSpace(photoId) && _cache.TryGetValue(photoId, out string photoBase64))
-    {
-        _log.LogTrace($"Adding user photo to credential. photoId: {photoId}");
-        request.claims["photo"] = photoBase64; // just base64, no data: prefix
-    }
+            string photoId = this.Request.Headers["rsid"];
+            if (!string.IsNullOrWhiteSpace(photoId) && _cache.TryGetValue(photoId, out string photoBase64))
+            {
+                _log.LogTrace($"Adding user photo to credential. photoId: {photoId}");
+                request.claims["photo"] = photoBase64; // just base64, no data: prefix
+            }
 
-    return request;
-}
+            return request;
+        }
 
 
-        public static string Sha256Hash( string source ) {
+        public static string Sha256Hash(string source)
+        {
             string hash = null;
-            using (SHA256 sha256Hash = SHA256.Create()) {
-                byte[] bytes = sha256Hash.ComputeHash( Encoding.UTF8.GetBytes( source ) );
-                hash = Convert.ToBase64String( bytes );
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(source));
+                hash = Convert.ToBase64String(bytes);
             }
             return hash;
         }
@@ -114,18 +118,19 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
         [HttpGet("/api/issuer/issuance-request")]
         public async Task<ActionResult> IssuanceRequest()
         {
-            _log.LogTrace( this.HttpContext.Request.GetDisplayUrl() );
+            _log.LogTrace(this.HttpContext.Request.GetDisplayUrl());
             try
             {
                 string manifestUrl = _configuration["VerifiedID:CredentialManifest"];
-                if ( string.IsNullOrWhiteSpace(manifestUrl ) ) {
+                if (string.IsNullOrWhiteSpace(manifestUrl))
+                {
                     string errmsg = $"Manifest missing in config file";
-                    _log.LogError( errmsg );
-                    return BadRequest( new { error = "400", error_description = errmsg } );
+                    _log.LogError(errmsg);
+                    return BadRequest(new { error = "400", error_description = errmsg });
                 }
                 string tenantId = _configuration["VerifiedID:TenantId"];
                 string manifestTenantId = manifestUrl.Split("/")[5];
-                if ( manifestTenantId != tenantId)
+                if (manifestTenantId != tenantId)
                 {
                     string errmsg = $"TenantId in ManifestURL {manifestTenantId}. does not match tenantId in config file {tenantId}";
                     _log.LogError(errmsg);
@@ -136,23 +141,24 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
                 {
                     //The VC Request API is an authenticated API. We need to clientid and secret (or certificate) to create an access token which 
                     //needs to be send as bearer to the VC Request API
-                    var accessToken = await MsalAccessTokenHandler.GetAccessToken( _configuration );
+                    var accessToken = await MsalAccessTokenHandler.GetAccessToken(_configuration);
                     if (accessToken.Item1 == String.Empty)
                     {
                         _log.LogError(String.Format("failed to acquire accesstoken: {0} : {1}", accessToken.error, accessToken.error_description));
                         return BadRequest(new { error = accessToken.error, error_description = accessToken.error_description });
                     }
-                    IssuanceRequest request = CreateIssuanceRequest( out string pinCode );                    
+                    IssuanceRequest request = CreateIssuanceRequest(out string pinCode);
 
                     // If the credential uses the idTokenHint attestation flow, then you must set the claims before
                     // calling the Request Service API
-                    SetClaims( request );
+                    SetClaims(request);
 
-                    string jsonString = JsonConvert.SerializeObject( request, Newtonsoft.Json.Formatting.None, new JsonSerializerSettings {
+                    string jsonString = JsonConvert.SerializeObject(request, Newtonsoft.Json.Formatting.None, new JsonSerializerSettings
+                    {
                         NullValueHandling = NullValueHandling.Ignore
-                    } );
+                    });
 
-                    _log.LogTrace( $"Request API payload: {jsonString}" );
+                    _log.LogTrace($"Request API payload: {jsonString}");
                     var client = _httpClientFactory.CreateClient();
                     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.token);
                     string url = $"{_configuration["VerifiedID:ApiEndpoint"]}createIssuanceRequest";
@@ -163,7 +169,8 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
                     {
                         _log.LogTrace("succesfully called Request API");
                         JObject requestConfig = JObject.Parse(response);
-                        if (!string.IsNullOrEmpty(pinCode) ) { 
+                        if (!string.IsNullOrEmpty(pinCode))
+                        {
                             requestConfig["pin"] = pinCode;
                         }
                         requestConfig.Add(new JProperty("id", request.callback.state));
@@ -177,7 +184,7 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
                             expiry = requestConfig["expiry"].ToString()
                         };
                         _cache.Set(request.callback.state, JsonConvert.SerializeObject(cacheData)
-                                      , DateTimeOffset.Now.AddSeconds( _configuration.GetValue<int>( "AppSettings:CacheExpiresInSeconds", 300 ) ) );
+                                      , DateTimeOffset.Now.AddSeconds(_configuration.GetValue<int>("AppSettings:CacheExpiresInSeconds", 300)));
                         return new ContentResult { ContentType = "application/json", Content = jsonString };
                     }
                     else
@@ -197,89 +204,116 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
             }
         }
 
-        private bool GetCredentialManifest( out string manifest, out string error) {
+        private bool GetCredentialManifest(out string manifest, out string error)
+        {
             error = null;
-            if (!_cache.TryGetValue( "manifest", out manifest )) {
+            if (!_cache.TryGetValue("manifest", out manifest))
+            {
                 string manifestUrl = _configuration["VerifiedID:CredentialManifest"];
-                if (string.IsNullOrWhiteSpace( manifestUrl )) {
-                    error = $"Manifest missing in config file";                    
+                if (string.IsNullOrWhiteSpace(manifestUrl))
+                {
+                    error = $"Manifest missing in config file";
                     return false;
                 }
                 var client = _httpClientFactory.CreateClient();
-                HttpResponseMessage res = client.GetAsync( manifestUrl ).Result;
+                HttpResponseMessage res = client.GetAsync(manifestUrl).Result;
                 string response = res.Content.ReadAsStringAsync().Result;
-                if (res.StatusCode != HttpStatusCode.OK) {
+                if (res.StatusCode != HttpStatusCode.OK)
+                {
                     error = $"HTTP status {(int)res.StatusCode} retrieving manifest from URL {manifestUrl}";
                     return false;
                 }
-                JObject resp = JObject.Parse( response );
-                if ( resp.ContainsKey("token")) {
+                JObject resp = JObject.Parse(response);
+                if (resp.ContainsKey("token"))
+                {
                     string jwtToken = resp["token"].ToString();
-                    jwtToken = jwtToken.Replace( "_", "/" ).Replace( "-", "+" ).Split( "." )[1];
-                    jwtToken = jwtToken.PadRight( 4 * ((jwtToken.Length + 3) / 4), '=' );
-                    manifest = System.Text.Encoding.UTF8.GetString( Convert.FromBase64String( jwtToken ) );
-                } else {
+                    jwtToken = jwtToken.Replace("_", "/").Replace("-", "+").Split(".")[1];
+                    jwtToken = jwtToken.PadRight(4 * ((jwtToken.Length + 3) / 4), '=');
+                    manifest = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(jwtToken));
+                }
+                else
+                {
                     manifest = response;
                 }
-                _cache.Set( "manifest", manifest );
+                _cache.Set("manifest", manifest);
             }
             return true;
         }
         [HttpGet("/api/issuer/get-manifest")]
-        public ActionResult getManifest() {
-            _log.LogTrace( this.HttpContext.Request.GetDisplayUrl() );
-            try {
-                if ( !GetCredentialManifest( out string manifest, out string errmsg ) ) {
-                    _log.LogError( errmsg );
-                    return BadRequest( new { error = "400", error_description = errmsg } );
+        public ActionResult getManifest()
+        {
+            _log.LogTrace(this.HttpContext.Request.GetDisplayUrl());
+            try
+            {
+                if (!GetCredentialManifest(out string manifest, out string errmsg))
+                {
+                    _log.LogError(errmsg);
+                    return BadRequest(new { error = "400", error_description = errmsg });
                 }
                 return new ContentResult { ContentType = "application/json", Content = manifest };
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 return BadRequest(new { error = "400", error_description = ex.Message });
             }
         }
 
-        [HttpGet( "/api/issuer/selfie-request" )]
-        public ActionResult SelfieRequest() {
-            _log.LogTrace( this.HttpContext.Request.GetDisplayUrl() );
-            try {
+        [HttpGet("/api/issuer/selfie-request")]
+        public ActionResult SelfieRequest()
+        {
+            _log.LogTrace(this.HttpContext.Request.GetDisplayUrl());
+            try
+            {
                 string hostname = GetRequestHostName();
                 string id = Guid.NewGuid().ToString();
-                var request = new {
+                var request = new
+                {
                     id = id,
                     url = $"{hostname}/selfie.html?callbackUrl={hostname}/api/issuer/selfie/{id}",
-                    expiry = DateTimeOffset.UtcNow.AddMinutes( 5 ).ToUnixTimeSeconds(),
+                    expiry = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds(),
                     photo = "",
                     status = "request_created"
                 };
-                string resp = _cache.Set( id, JsonConvert.SerializeObject( request )
-                    , DateTimeOffset.Now.AddSeconds( _configuration.GetValue<int>( "AppSettings:CacheExpiresInSeconds", 300 ) ) );
+                string resp = _cache.Set(id, JsonConvert.SerializeObject(request)
+                    , DateTimeOffset.Now.AddSeconds(_configuration.GetValue<int>("AppSettings:CacheExpiresInSeconds", 300)));
                 return new ContentResult { StatusCode = (int)HttpStatusCode.Created, ContentType = "application/json", Content = resp };
-            } catch (Exception ex) {
-                return BadRequest( new { error = "400", error_description = ex.Message } );
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = "400", error_description = ex.Message });
             }
         }
 
         [AllowAnonymous]
-        [HttpPost( "/api/issuer/userphoto" )]
-        public ActionResult SetUserPhoto() {
-            _log.LogTrace( this.HttpContext.Request.GetDisplayUrl() );
-            try {
-                string body = new System.IO.StreamReader( this.Request.Body ).ReadToEndAsync().Result;
-                _log.LogTrace( body );
-                int idx = body.IndexOf( ";base64," );
-                if (-1 == idx) {
-                    return BadRequest( new { error = "400", error_description = $"Image must be 'data:image/jpeg;base64,'" } );
+        [HttpPost("/api/issuer/userphoto")]
+        public ActionResult SetUserPhoto()
+        {
+            _log.LogTrace(this.HttpContext.Request.GetDisplayUrl());
+            try
+            {
+                string body = new System.IO.StreamReader(this.Request.Body).ReadToEndAsync().Result;
+                _log.LogTrace(body);
+                int idx = body.IndexOf(";base64,");
+                if (-1 == idx)
+                {
+                    return BadRequest(new { error = "400", error_description = $"Image must be 'data:image/jpeg;base64,'" });
                 }
-                string photo = body.Substring( idx + 8 );
+                string photo = body.Substring(idx + 8);
                 string photoId = this.Request.Headers["rsid"];
-                int cacheSeconds = _configuration.GetValue<int>( "AppSettings:CacheExpiresInSeconds", 300 );
-                _cache.Set( photoId, photo, DateTimeOffset.Now.AddSeconds( cacheSeconds ) );
-                _log.LogTrace( $"User set photo to add to credential. photoId: {photoId}" );
-                return new ContentResult { StatusCode = (int)HttpStatusCode.Created, ContentType = "application/json"
-                                , Content = JsonConvert.SerializeObject( new { id = photoId, message = $"Photo will be cached for {cacheSeconds} seconds" } ) };
-            } catch (Exception ex) {
-                return BadRequest( new { error = "400", error_description = ex.Message } );
+                int cacheSeconds = _configuration.GetValue<int>("AppSettings:CacheExpiresInSeconds", 300);
+                _cache.Set(photoId, photo, DateTimeOffset.Now.AddSeconds(cacheSeconds));
+                _log.LogTrace($"User set photo to add to credential. photoId: {photoId}");
+                return new ContentResult
+                {
+                    StatusCode = (int)HttpStatusCode.Created,
+                    ContentType = "application/json"
+                                ,
+                    Content = JsonConvert.SerializeObject(new { id = photoId, message = $"Photo will be cached for {cacheSeconds} seconds" })
+                };
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = "400", error_description = ex.Message });
             }
         }
 
@@ -301,16 +335,20 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
             return (userAgent.Contains("Android") || userAgent.Contains("iPhone"));
         }
 
-        public IssuanceRequest CreateIssuanceRequest( out string pinCode ) {
+        public IssuanceRequest CreateIssuanceRequest(out string pinCode)
+        {
             pinCode = null;
-            IssuanceRequest request = new IssuanceRequest() {
-                includeQRCode = _configuration.GetValue( "VerifiedID:includeQRCode", false ),
+            IssuanceRequest request = new IssuanceRequest()
+            {
+                includeQRCode = _configuration.GetValue("VerifiedID:includeQRCode", false),
                 authority = _configuration["VerifiedID:DidAuthority"],
-                registration = new Registration() {
+                registration = new Registration()
+                {
                     clientName = _configuration["VerifiedID:client_name"],
-                    purpose = _configuration.GetValue( "VerifiedID:purpose", "" )
+                    purpose = _configuration.GetValue("VerifiedID:purpose", "")
                 },
-                callback = new Callback() {
+                callback = new Callback()
+                {
                     url = $"{GetRequestHostName()}/api/issuer/issuecallback",
                     state = Guid.NewGuid().ToString(),
                     headers = new Dictionary<string, string>() { { "api-key", this._apiKey } }
@@ -319,33 +357,41 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
                 manifest = _configuration["VerifiedID:CredentialManifest"],
                 pin = null
             };
-            if ("" == request.registration.purpose) {
+            if ("" == request.registration.purpose)
+            {
                 request.registration.purpose = null;
             }
-            if ( !IsMobile() ) {
-                int issuancePinCodeLength = _configuration.GetValue( "VerifiedID:IssuancePinCodeLength", 0 );
+            if (!IsMobile())
+            {
+                int issuancePinCodeLength = _configuration.GetValue("VerifiedID:IssuancePinCodeLength", 0);
                 // if pincode is required, set it up in the request
-                if (issuancePinCodeLength > 0 ) {
-                    int pinCodeInt = RandomNumberGenerator.GetInt32( 1, int.Parse( "".PadRight( issuancePinCodeLength, '9' ) ) );
-                    pinCode = string.Format( "{0:D" + issuancePinCodeLength.ToString() + "}", pinCodeInt );
-                    _log.LogTrace( "pin={0}", pinCode );
-                    if (_configuration.GetValue( "VerifiedID:HashPinCode", false ) ) {
-                        string salt = _configuration.GetValue( "VerifiedID:PinCodeSalt", Guid.NewGuid().ToString() );
-                        SetPinCode( request, Sha256Hash( salt + pinCode ), issuancePinCodeLength, salt );
-                    } else {
-                        SetPinCode( request, pinCode, issuancePinCodeLength );
+                if (issuancePinCodeLength > 0)
+                {
+                    int pinCodeInt = RandomNumberGenerator.GetInt32(1, int.Parse("".PadRight(issuancePinCodeLength, '9')));
+                    pinCode = string.Format("{0:D" + issuancePinCodeLength.ToString() + "}", pinCodeInt);
+                    _log.LogTrace("pin={0}", pinCode);
+                    if (_configuration.GetValue("VerifiedID:HashPinCode", false))
+                    {
+                        string salt = _configuration.GetValue("VerifiedID:PinCodeSalt", Guid.NewGuid().ToString());
+                        SetPinCode(request, Sha256Hash(salt + pinCode), issuancePinCodeLength, salt);
+                    }
+                    else
+                    {
+                        SetPinCode(request, pinCode, issuancePinCodeLength);
                     }
                 }
             }
-            SetExpirationDate( request );
+            SetExpirationDate(request);
             return request;
         }
-        private IssuanceRequest SetExpirationDate( IssuanceRequest request) {
-            string credentialExpiration = _configuration.GetValue( "VerifiedID:CredentialExpiration", "" );
+        private IssuanceRequest SetExpirationDate(IssuanceRequest request)
+        {
+            string credentialExpiration = _configuration.GetValue("VerifiedID:CredentialExpiration", "");
             DateTime expDateUtc;
             DateTime utcNow = DateTime.UtcNow;
             // This is just examples for how to specify your own expiry dates
-            switch (credentialExpiration.ToUpperInvariant()) {
+            switch (credentialExpiration.ToUpperInvariant())
+            {
                 case "EOD":
                     expDateUtc = DateTime.UtcNow;
                     break;
@@ -354,17 +400,17 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
                     int target = (int)DayOfWeek.Sunday;
                     if (target <= start)
                         target += 7;
-                    expDateUtc = utcNow.AddDays( target - start );
+                    expDateUtc = utcNow.AddDays(target - start);
                     break;
                 case "EOM":
-                    expDateUtc = new DateTime( utcNow.Year, utcNow.Month, DateTime.DaysInMonth( utcNow.Year, utcNow.Month ) );
+                    expDateUtc = new DateTime(utcNow.Year, utcNow.Month, DateTime.DaysInMonth(utcNow.Year, utcNow.Month));
                     break;
                 case "EOQ":
-                    int quarterEndMonth = (int)(3 * Math.Ceiling( (double)utcNow.Month / 3 ));
-                    expDateUtc = new DateTime( utcNow.Year, quarterEndMonth, DateTime.DaysInMonth( utcNow.Year, quarterEndMonth ) );
+                    int quarterEndMonth = (int)(3 * Math.Ceiling((double)utcNow.Month / 3));
+                    expDateUtc = new DateTime(utcNow.Year, quarterEndMonth, DateTime.DaysInMonth(utcNow.Year, quarterEndMonth));
                     break;
                 case "EOY":
-                    expDateUtc = new DateTime( utcNow.Year, 12, 31 );
+                    expDateUtc = new DateTime(utcNow.Year, 12, 31);
                     break;
                 default:
                     return request;
@@ -373,19 +419,25 @@ Convert.ToString(HttpContext.Request.Query["familyName"])
             // in local timezone. So for example, EOY will be displayed as "Jan 1" if the user is in a timezone
             // east of GMT. Also, if you issue a VC that should expire 5pm locally, then you need to calculate
             // what 5pm locally is in UTC time
-            request.expirationDate = $"{Convert.ToDateTime( expDateUtc ).ToString( "yyyy-MM-dd" )}T23:59:59.000Z";
+            request.expirationDate = $"{Convert.ToDateTime(expDateUtc).ToString("yyyy-MM-dd")}T23:59:59.000Z";
             return request;
         }
-        public IssuanceRequest SetPinCode( IssuanceRequest request, string pinCode = null, int pinCodeLength = 0, string salt = null) {
-            if (string.IsNullOrWhiteSpace( pinCode )) {
+        public IssuanceRequest SetPinCode(IssuanceRequest request, string pinCode = null, int pinCodeLength = 0, string salt = null)
+        {
+            if (string.IsNullOrWhiteSpace(pinCode))
+            {
                 request.pin = null;
-            } else {
-                request.pin = new Pin() {
+            }
+            else
+            {
+                request.pin = new Pin()
+                {
                     length = pinCodeLength,
                     value = pinCode
                 };
                 // if hashed pin code
-                if ( !string.IsNullOrWhiteSpace( salt )) { 
+                if (!string.IsNullOrWhiteSpace(salt))
+                {
                     request.pin.salt = salt;
                     request.pin.alg = "sha256";
                     request.pin.iterations = 1;

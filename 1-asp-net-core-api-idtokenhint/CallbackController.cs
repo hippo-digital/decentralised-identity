@@ -56,7 +56,6 @@ namespace AspNetCoreVerifiableCredentials
                 return false;
             }
 
-            // Expect yyyy-MM-dd (same as you’re using on issuance)
             if (!DateTime.TryParseExact(
                     dob,
                     "yyyy-MM-dd",
@@ -210,49 +209,35 @@ namespace AspNetCoreVerifiableCredentials
                         break;
                     case "presentation_verified":
                         callback = JsonConvert.DeserializeObject<CallbackEvent>(reqState["callback"].ToString());
+                        var claimsDict = callback.verifiedCredentialsData[0].claims;
+                        string dob = null;
+                        if (!claimsDict.TryGetValue("dateOfBirth", out dob) &&
+    !claimsDict.TryGetValue("birthdate", out dob) &&
+    !claimsDict.TryGetValue("dob", out dob))
+                        {
+                            dob = null;
+                        }
 
-                        // Base response – keep existing structure
+                        bool isAgeOver18 = IsOver18FromDob(dob);
+
+                        claimsDict["ageOver18"] = isAgeOver18 ? "true" : "false";
+
                         JObject resp = JObject.Parse(JsonConvert.SerializeObject(new
                         {
                             status = requestStatus,
                             message = "Presentation verified",
                             type = callback.verifiedCredentialsData[0].type,
-                            claims = callback.verifiedCredentialsData[0].claims,
+                            claims = claimsDict,
                             subject = callback.subject,
                             payload = callback.verifiedCredentialsData,
+                            isAgeOver18 = isAgeOver18,
+                            ageCheckMessage = isAgeOver18
+                                ? "Age check: holder is 18 or over."
+                                : "Age check: holder is under 18."
                         }, Newtonsoft.Json.Formatting.None, new JsonSerializerSettings
                         {
                             NullValueHandling = NullValueHandling.Ignore
                         }));
-
-                        // ⬇️ NEW: age verification logic ⬇️
-                        var claimsObj = callback.verifiedCredentialsData[0].claims as JObject;
-                        bool isAgeOver18 = false;
-
-                        if (claimsObj != null)
-                        {
-                            string dob =
-                                claimsObj["dateOfBirth"]?.ToString()
-                                ?? claimsObj["birthdate"]?.ToString();
-
-                            // Always recompute based on NOW
-                            isAgeOver18 = IsOver18FromDob(dob);
-
-                            // Overwrite / set ageOver18 in the claims object so UI sees the fresh value
-                            claimsObj["ageOver18"] = isAgeOver18;
-
-                            resp["claims"] = claimsObj;
-                        }
-
-                        resp.Add(new JProperty("isAgeOver18", isAgeOver18));
-                        resp.Add(new JProperty(
-                            "ageCheckMessage",
-                            isAgeOver18
-                                ? "Age check: holder is 18 or over."
-                                : "Age check: holder is under 18."
-                        ));
-
-                        // ⬆️ END: age verification logic ⬆️
 
                         if (null != callback.receipt && null != callback.receipt.vp_token)
                         {
