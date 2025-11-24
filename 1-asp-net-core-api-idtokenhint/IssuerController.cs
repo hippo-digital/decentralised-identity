@@ -80,13 +80,13 @@ namespace AspNetCoreVerifiableCredentials
                           ?? _configuration.GetValue<string>("VerifiedID:DefaultAddress") ?? "221B Baker Street, London";
             request.claims["address"] = addr;
 
-            if (DateTime.TryParse(dob, out var dobDt))
-            {
-                var today = DateTime.UtcNow.Date;
-                var eighteenthBirthday = dobDt.Date.AddYears(18);
-                bool over18 = today >= eighteenthBirthday;
-                request.claims["ageOver18"] = over18.ToString().ToLowerInvariant();
-            }
+            // if (DateTime.TryParse(dob, out var dobDt))
+            // {
+            //     var today = DateTime.UtcNow.Date;
+            //     var eighteenthBirthday = dobDt.Date.AddYears(18);
+            //     bool over18 = today >= eighteenthBirthday;
+            //     request.claims["ageOver18"] = over18.ToString().ToLowerInvariant();
+            // }
 
             string photoId = this.Request.Headers["rsid"];
             if (!string.IsNullOrWhiteSpace(photoId) && _cache.TryGetValue(photoId, out string photoBase64))

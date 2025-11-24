@@ -66,7 +66,7 @@ namespace AspNetCoreVerifiableCredentials
                 return false;
             }
 
-            var today = DateTime.UtcNow;
+            var today = DateTime.UtcNow.AddDays(1);
             int age = today.Year - dobDate.Year;
             if (dobDate.Date > today.AddYears(-age)) age--;
 
